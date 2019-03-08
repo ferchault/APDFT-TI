@@ -21,8 +21,8 @@ def get_hf_density(bond_length, mixing_value, dZ):
     basisset = 'STO-3G' #'6-31G(d)'
     obasis = horton.get_gobasis(mol.coordinates, np.array([7, 7]), basisset)
     obasis2 = horton.get_gobasis(mol.coordinates, np.array([7-int(dZ), 7+int(dZ)]), basisset)
-    obasis.concatenate(obasis2)
-
+    obasis = horton.GOBasis.concatenate(obasis, obasis2)
+    
     lf = horton.DenseLinalgFactory(obasis.nbasis)
     olp = obasis.compute_overlap(lf)
     kin = obasis.compute_kinetic(lf)
