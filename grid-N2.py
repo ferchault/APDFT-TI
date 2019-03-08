@@ -24,5 +24,5 @@ def build_grids():
     return pd.DataFrame(grids)
 
 grids = build_grids()
-grids.to_pickle('grids.pkl')
+grids.to_pickle('N2.pkl')
 
