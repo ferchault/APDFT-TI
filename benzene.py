@@ -16,7 +16,6 @@ def build_base(target, mixing, basisset):
     mol.coordinates = read['coordinates']
     mol.numbers = baseline
     mol.pseudo_numbers = baseline + dZ * mixing
-    print (mol.pseudo_numbers)
     
     # get grid
     grid = horton.BeckeMolGrid(mol.coordinates, (baseline * 0 + 7).astype(int), baseline * 0 + 7, 'insane', mode='keep', random_rotate=False)
@@ -31,15 +30,15 @@ def build_base(target, mixing, basisset):
         obasis = horton.GOBasis.concatenate(obasis, obasis2)
     
     # start calculation
-    olp = obasis.compute_overlap()
-    kin = obasis.compute_kinetic()
-    na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers)
-    er = obasis.compute_electron_repulsion()
+    lf = horton.DenseLinalgFactory(obasis.nbasis)
+    olp = obasis.compute_overlap(lf)
+    kin = obasis.compute_kinetic(lf)
+    na = obasis.compute_nuclear_attraction(mol.coordinates, mol.pseudo_numbers, lf)
+    er = obasis.compute_electron_repulsion(lf)
     
-    orb_alpha = horton.Orbitals(obasis.nbasis)
-    orb_beta = horton.Orbitals(obasis.nbasis)
-    one = kin + na
-    horton.guess_core_hamiltonian(olp, one, orb_alpha, orb_beta)
+    orb_alpha = lf.create_expansion()
+    orb_beta = lf.create_expansion()
+    horton.guess_core_hamiltonian(olp, kin, na, orb_alpha, orb_beta)
     
     external = {'nn': horton.compute_nucnuc(mol.coordinates, mol.pseudo_numbers)}
     
@@ -50,15 +49,10 @@ def build_base(target, mixing, basisset):
     dm_alpha = orb_alpha.to_dm()
     dm_beta = orb_beta.to_dm()
     scf_solver = horton.EDIIS2SCFSolver(1e-5, maxiter=400)
-    scf_solver(ham, olp, occ_model, dm_alpha, dm_beta)
+    scf_solver(ham, lf, olp, occ_model, dm_alpha, dm_beta)
     
-    fock_alpha = np.zeros(olp.shape)
-    fock_beta = np.zeros(olp.shape)
     ham.reset(dm_alpha, dm_beta)
     energy = ham.compute_energy()
-    ham.compute_fock(fock_alpha, fock_beta)
-    orb_alpha.from_fock_and_dm(fock_alpha, dm_alpha, olp)
-    orb_beta.from_fock_and_dm(fock_beta, dm_beta, olp)
 
     # integration grid
     rho_alpha = obasis.compute_grid_density_dm(dm_alpha, grid.points)
